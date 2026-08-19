@@ -57,6 +57,26 @@ can be obtained:
 
 **Per network** — interface, gateway, DHCP server, DNS servers, search domains.
 
+## Clicking through to a device
+
+Ports in the detail pane are actionable. Double-click a port (or use the button on
+the row, or right-click for the full list) and it opens in whatever macOS uses for
+that protocol:
+
+| Port | Opens in |
+|---|---|
+| HTTP/HTTPS, and any unrecognised port | your browser |
+| SSH (22, 2222), Telnet (23) | Terminal |
+| VNC / Screen Sharing (5900+) | Screen Sharing |
+| SMB (445), AFP (548), FTP (21) | Finder |
+| RTSP (554) | your video player |
+| RDP (3389) | your remote desktop client |
+| Printers (631, 9100, 515) | the printer's web admin |
+
+Databases and caches (MySQL, PostgreSQL, Redis, MongoDB, SQL Server, memcached,
+Elasticsearch) copy a ready-to-paste client command instead, since there is no
+sensible URL to open. Every port also offers "Copy address" and a `nc` probe.
+
 **This Mac** — every listening socket with the owning process, PID and user;
 whether each is loopback-only or reachable from the network; firewall and stealth
 mode state; sharing services; interface details.

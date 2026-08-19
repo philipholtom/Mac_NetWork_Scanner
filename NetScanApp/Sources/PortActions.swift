@@ -99,7 +99,10 @@ enum PortActions {
             }
 
             if number == 3389 {
-                if let url = URL(string: "rdp://full%20address=s:\(ip):\(number)") {
+                // The documented "rdp://full%20address=s:host:port" form is not a
+                // parseable URL, so use the plain host form, which still hands off
+                // to the RDP client.
+                if let url = URL(string: "rdp://\(ip):\(number)") {
                     actions.append(PortAction(title: "Open remote desktop",
                                               systemImage: "display", kind: .open(url)))
                 }
@@ -177,7 +180,20 @@ enum PortActions {
         actions.append(PortAction(title: "Copy netcat probe", systemImage: "doc.on.doc",
                                   kind: .copy("nc -v \(ip) \(number)")))
 
-        return actions.filter { $0.isOpenable }
+        var result = actions.filter { $0.isOpenable }
+
+        // Nothing openable and no protocol we recognise: plenty of unknown ports
+        // turn out to speak HTTP, so offer that rather than leaving a dead row.
+        let notWebProtocols: Set<Int> = [53, 111, 123, 135, 161, 1433, 2049, 3306,
+                                         5432, 5672, 6379, 11211, 27017]
+        if port.proto == "tcp", !notWebProtocols.contains(number),
+           !result.contains(where: { if case .open = $0.kind { return true } else { return false } }),
+           let url = URL(string: "http://\(ip):\(number)/") {
+            result.insert(PortAction(title: "Try in browser",
+                                     systemImage: "safari", kind: .open(url)), at: 0)
+        }
+
+        return result
     }
 
     /// The single action a click should perform, if there is an obvious one.

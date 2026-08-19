@@ -335,14 +335,15 @@ final class ScanController: ObservableObject {
                 let decoder = JSONDecoder()
                 decoder.keyDecodingStrategy = .convertFromSnakeCase
                 let audit = try decoder.decode(SelfAudit.self, from: data)
-                await MainActor.run {
+                await MainActor.run { [weak self] in
                     self?.selfAudit = audit
                     self?.isAuditing = false
                 }
             } catch {
-                await MainActor.run {
+                let message = error.localizedDescription
+                await MainActor.run { [weak self] in
                     self?.isAuditing = false
-                    self?.lastError = "Self audit failed: \(error.localizedDescription)"
+                    self?.lastError = "Self audit failed: \(message)"
                 }
             }
         }

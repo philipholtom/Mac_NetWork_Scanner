@@ -171,6 +171,16 @@ build.sh            builds and signs NetScan.app
 The app runs the engine as a subprocess with `--ndjson` and renders the event
 stream live, so results appear as they are found.
 
+## Handling untrusted input
+
+Everything a scan learns comes from devices on the network, which are not trusted:
+
+- A UPnP device supplies the URL of its own description document. Only `http(s)`
+  is fetched (urllib will otherwise happily open a `file://` URL and read a local
+  file into the report), and the host must match the address that answered.
+- Device names are escaped in HTML output and prefixed in CSV output, so a host
+  calling itself `=1+1` cannot become a live formula when the report is opened.
+
 ## Notes and limits
 
 - TCP scanning is *connect*-based, so scans are logged by anything watching. There

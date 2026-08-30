@@ -272,11 +272,29 @@ def _port_detail(port: dict) -> str:
     return " · ".join(parts)
 
 
+def _csv_safe(value) -> str:
+    """Neutralise spreadsheet formula injection.
+
+    Device names come off the network, so a host calling itself "=1+1" would
+    otherwise land in the CSV as a live formula that Excel or Numbers evaluates
+    when the report is opened.
+    """
+    text = "" if value is None else str(value)
+    if text[:1] in ("=", "+", "-", "@", "\t", "\r"):
+        return "'" + text
+    return text
+
+
 def render_csv(document: dict) -> str:
     import csv
     import io
     buf = io.StringIO()
-    writer = csv.writer(buf)
+    raw_writer = csv.writer(buf)
+
+    class writer:  # noqa: N801 - tiny shim so every row is sanitised
+        @staticmethod
+        def writerow(row):
+            raw_writer.writerow([_csv_safe(cell) for cell in row])
     writer.writerow(["ip", "name", "device_type", "vendor", "mac", "model", "network",
                      "rtt_ms", "proto", "port", "service", "product", "version",
                      "http_title", "tls_subject", "severity", "risk"])

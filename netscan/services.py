@@ -277,12 +277,25 @@ def profile_ports(profile: str) -> List[int]:
 
 
 def parse_port_spec(spec: str) -> List[int]:
-    """Parse '22,80,8000-8100' into a sorted list of ports."""
+    """Parse '22,80,8000-8100' into a sorted list of ports.
+
+    Raises ValueError with a readable message rather than letting int() throw.
+    """
     ports: Set[int] = set()
     for chunk in spec.split(","):
         chunk = chunk.strip()
         if not chunk:
             continue
+        try:
+            if "-" in chunk:
+                lo, _, hi = chunk.partition("-")
+                lo_i, hi_i = int(lo), int(hi)
+            else:
+                int(chunk)
+        except ValueError:
+            raise ValueError(
+                f"'{chunk}' is not a port or range — use e.g. 22,80,8000-8100"
+            ) from None
         if "-" in chunk:
             lo, _, hi = chunk.partition("-")
             lo_i, hi_i = int(lo), int(hi)

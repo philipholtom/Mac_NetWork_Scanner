@@ -72,6 +72,13 @@ def main(argv: Optional[List[str]] = None) -> int:
     if args.self_audit:
         return _self_audit(args)
 
+    if args.ports:
+        try:
+            services.parse_port_spec(args.ports)
+        except ValueError as exc:
+            print(f"netscan: {exc}", file=sys.stderr)
+            return 2
+
     options = engine.ScanOptions(
         targets=args.targets,
         all_networks=not args.targets,

@@ -591,7 +591,8 @@ class Scanner:
             ip, headers = item
             location = headers.get("location")
             if location:
-                headers.update(discovery.fetch_upnp_description(location, 3.0))
+                headers.update(discovery.fetch_upnp_description(location, 3.0,
+                                                                expected_host=ip))
             return ip, headers
 
         if results:

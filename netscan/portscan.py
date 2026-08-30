@@ -70,24 +70,30 @@ async def scan_host_ports(
 ) -> List[PortResult]:
     """TCP connect scan one host. Returns only ports that are open."""
     port_list = list(ports)
-    semaphore = asyncio.Semaphore(concurrency)
     done = 0
     open_ports: List[PortResult] = []
-    filtered = 0
 
-    async def worker(port: int) -> None:
-        nonlocal done, filtered
-        async with semaphore:
+    # A fixed pool of workers pulling from one iterator, rather than a task per
+    # port. Creating 65,535 tasks per host (the `full` profile) costs about
+    # 100 MB each and multiplies by the number of hosts scanned in parallel.
+    pending = iter(port_list)
+
+    async def worker() -> None:
+        nonlocal done
+        while True:
+            try:
+                port = next(pending)     # safe: the loop is single-threaded
+            except StopIteration:
+                return
             result = await _probe_tcp(ip, port, timeout)
-        done += 1
-        if result.state == "open":
-            open_ports.append(result)
-        elif result.state == "filtered":
-            filtered += 1
-        if progress and done % 32 == 0:
-            progress(done, len(port_list))
+            done += 1
+            if result.state == "open":
+                open_ports.append(result)
+            if progress and done % 64 == 0:
+                progress(done, len(port_list))
 
-    await asyncio.gather(*(worker(p) for p in port_list))
+    worker_count = max(1, min(concurrency, len(port_list)))
+    await asyncio.gather(*(worker() for _ in range(worker_count)))
     if progress:
         progress(len(port_list), len(port_list))
     open_ports.sort(key=lambda r: r.port)
@@ -105,19 +111,24 @@ async def scan_many_hosts(
 ) -> Dict[str, List[PortResult]]:
     """Scan many hosts, bounded by both host- and port-level concurrency."""
     results: Dict[str, List[PortResult]] = {}
-    host_sem = asyncio.Semaphore(host_concurrency)
+    remaining = iter(hosts)
 
-    async def run(ip: str) -> None:
-        async with host_sem:
+    async def run() -> None:
+        while True:
+            try:
+                ip = next(remaining)
+            except StopIteration:
+                return
             found = await scan_host_ports(
                 ip, ports, timeout=timeout, concurrency=port_concurrency,
-                progress=(lambda d, t: on_progress(ip, d, t)) if on_progress else None,
+                progress=(lambda d, t, _ip=ip: on_progress(_ip, d, t)) if on_progress else None,
             )
-        results[ip] = found
-        if on_host_done:
-            on_host_done(ip, found)
+            results[ip] = found
+            if on_host_done:
+                on_host_done(ip, found)
 
-    await asyncio.gather(*(run(h) for h in hosts))
+    worker_count = max(1, min(host_concurrency, len(hosts)))
+    await asyncio.gather(*(run() for _ in range(worker_count)))
     return results
 
 

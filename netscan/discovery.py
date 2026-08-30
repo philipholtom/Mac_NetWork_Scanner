@@ -480,11 +480,28 @@ def _parse_http_headers(text: str) -> Dict[str, str]:
     return headers
 
 
-def fetch_upnp_description(location: str, timeout: float = 3.0) -> Dict[str, str]:
-    """Fetch and parse a UPnP device description XML for friendly name / model."""
+def fetch_upnp_description(location: str, timeout: float = 3.0,
+                           expected_host: Optional[str] = None) -> Dict[str, str]:
+    """Fetch and parse a UPnP device description XML for friendly name / model.
+
+    The URL comes from the device itself, so it is not trusted: only http(s) is
+    allowed (urllib would happily open a file:// URL and read a local file into
+    the report), and the host must be the same address that answered the
+    M-SEARCH, so a device cannot aim the scanner at anything else.
+    """
+    import urllib.parse
     import urllib.request
 
     info: Dict[str, str] = {}
+    try:
+        parsed = urllib.parse.urlparse(location)
+    except ValueError:
+        return info
+    if parsed.scheme not in ("http", "https"):
+        return info
+    if expected_host and parsed.hostname != expected_host:
+        return info
+
     try:
         req = urllib.request.Request(location, headers={"User-Agent": "netscan/1.0"})
         with urllib.request.urlopen(req, timeout=timeout) as resp:

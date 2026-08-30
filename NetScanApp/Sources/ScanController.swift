@@ -396,6 +396,12 @@ final class ScanController: ObservableObject {
     }
 
     private func csvEscape(_ value: String) -> String {
+        // Device names come off the network, so a host calling itself "=1+1"
+        // would otherwise be evaluated as a formula when the CSV is opened.
+        var value = value
+        if let first = value.first, "=+-@\t\r".contains(first) {
+            value = "'" + value
+        }
         if value.contains(",") || value.contains("\"") || value.contains("\n") {
             return "\"" + value.replacingOccurrences(of: "\"", with: "\"\"") + "\""
         }

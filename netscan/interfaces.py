@@ -189,6 +189,10 @@ def routed_networks() -> Dict[str, str]:
             continue
         if net.is_loopback or net.is_link_local or net.is_multicast:
             continue
+        # netstat abbreviates, so a VPN route can read as "10" -> 10.0.0.0/8.
+        # Enumerating 16 million addresses is not a scan anyone wants.
+        if net.prefixlen < 16:
+            continue
         nets.setdefault(netif, str(net))
     return nets
 

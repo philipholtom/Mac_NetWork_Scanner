@@ -7,6 +7,7 @@ import re
 import ssl
 import tempfile
 import time
+import warnings
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 
@@ -452,7 +453,12 @@ async def _probe_tls(ip: str, port: int, fp: ServiceFingerprint, timeout: float,
         context.set_ciphers("DEFAULT:@SECLEVEL=0")
     except ssl.SSLError:
         pass
-    context.minimum_version = ssl.TLSVersion.TLSv1 if hasattr(ssl, "TLSVersion") else context.minimum_version
+    # Deliberately allow ancient TLS so old embedded devices can be fingerprinted;
+    # this is a read-only probe, not a connection we trust with anything.
+    if hasattr(ssl, "TLSVersion"):
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", DeprecationWarning)
+            context.minimum_version = ssl.TLSVersion.TLSv1
 
     try:
         reader, writer = await asyncio.wait_for(

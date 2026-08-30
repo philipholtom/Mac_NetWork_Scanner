@@ -181,6 +181,19 @@ Everything a scan learns comes from devices on the network, which are not truste
 - Device names are escaped in HTML output and prefixed in CSV output, so a host
   calling itself `=1+1` cannot become a live formula when the report is opened.
 
+## Tests
+
+```bash
+python3 tests/test_probe_safety.py
+```
+
+Regression tests for the ways a scanner can misbehave: that raw print ports and
+industrial controllers receive zero bytes while ordinary ports are still probed,
+that device-supplied UPnP URLs and device names cannot reach a local file or a
+spreadsheet formula, that port scanning uses a bounded worker pool, and that an
+abbreviated route is not expanded into millions of addresses. No network access
+or privileges required.
+
 ## Notes and limits
 
 - TCP scanning is *connect*-based, so scans are logged by anything watching. There

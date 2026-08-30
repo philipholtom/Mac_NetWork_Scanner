@@ -21,6 +21,22 @@ swiftc \
   "$ROOT"/NetScanApp/Sources/*.swift \
   -o "$APP/Contents/MacOS/$NAME"
 
+echo "==> Icon"
+ICON_SRC="$ROOT/icon/AppIcon.icns"
+if [ ! -f "$ICON_SRC" ]; then
+  echo "    generating (no AppIcon.icns present)"
+  ( cd "$ROOT/icon" \
+    && swiftc -O -target "${ARCH}-apple-macos${TARGET}" GenerateIcon.swift -o generate-icon \
+    && ./generate-icon . >/dev/null \
+    && iconutil -c icns AppIcon.iconset -o AppIcon.icns )
+fi
+if [ -f "$ICON_SRC" ]; then
+  cp "$ICON_SRC" "$APP/Contents/Resources/AppIcon.icns"
+  echo "    using $ICON_SRC"
+else
+  echo "    warning: no icon produced, app will use the generic placeholder"
+fi
+
 echo "==> Bundling the scanning engine"
 mkdir -p "$APP/Contents/Resources/engine"
 cp -R "$ROOT/netscan" "$APP/Contents/Resources/engine/netscan"
@@ -34,6 +50,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>CFBundleName</key><string>$NAME</string>
   <key>CFBundleDisplayName</key><string>Network Scanner</string>
   <key>CFBundleExecutable</key><string>$NAME</string>
+  <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>CFBundleIdentifier</key><string>$BUNDLE_ID</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>1.0.0</string>

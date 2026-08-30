@@ -16,3 +16,7 @@ network-scan.csv
 
 # macOS
 .DS_Store
+
+# Icon build intermediates (AppIcon.icns is committed; these are derived from it)
+icon/AppIcon.iconset/
+icon/generate-icon

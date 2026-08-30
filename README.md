@@ -13,6 +13,11 @@ Nothing needs `sudo`.
 ./build.sh && open build/NetScan.app
 ```
 
+`build.sh` compiles the app, bundles the engine inside it, attaches the icon and
+ad-hoc signs the result. The icon is drawn programmatically — run
+`icon/GenerateIcon.swift` to regenerate it, or delete `icon/AppIcon.icns` and the
+build will rebuild it for you.
+
 The command line works on its own too:
 
 ```bash
@@ -132,6 +137,7 @@ Useful flags: `--no-udp`, `--no-fingerprint`, `--timeout`, `--concurrency`,
 ## Layout
 
 ```
+icon/               app icon generator (GenerateIcon.swift) and AppIcon.icns
 netscan/            Python engine
   interfaces.py       interface, route, gateway, DHCP and DNS enumeration
   discovery.py        ICMP, ARP, NetBIOS, SSDP, reverse DNS

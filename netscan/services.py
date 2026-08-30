@@ -142,7 +142,7 @@ TCP_SERVICES: Dict[int, ServiceInfo] = {
     9000: _S("php-fpm/sonar", "PHP-FPM, Portainer or SonarQube", "Exposed PHP-FPM can lead to code execution", "high"),
     9001: _S("tor/supervisor", "Tor or Supervisor", None, "medium"),
     9090: _S("prometheus/cockpit", "Prometheus or Cockpit", "Metrics endpoints leak infrastructure detail", "medium"),
-    9100: _S("jetdirect", "Raw printing (JetDirect)", "Printers accept raw jobs and config changes", "medium"),
+    9100: _S("jetdirect", "Raw printing (JetDirect)", "Anything sent here is printed — the scanner only listens, never writes", "medium"),
     9200: _S("elasticsearch", "Elasticsearch", "Classic source of unauthenticated data leaks", "high"),
     9300: _S("elastic-node", "Elasticsearch transport", None, "high"),
     9418: _S("git", "Git daemon", "Anonymous repository access", "medium"),
@@ -174,7 +174,9 @@ UDP_SERVICES: Dict[int, ServiceInfo] = {
 
 # Ports probed during host discovery — chosen because something answers on
 # almost any live device.
-DISCOVERY_PORTS: List[int] = [80, 443, 22, 445, 139, 135, 3389, 5900, 62078, 8080, 631, 548, 5000, 7000, 9100, 53, 23, 21, 111, 32400]
+# 9100 is deliberately absent: printers are reachable via 631/80/515 anyway, and
+# there is no reason to open an extra connection to a raw print port.
+DISCOVERY_PORTS: List[int] = [80, 443, 22, 445, 139, 135, 3389, 5900, 62078, 8080, 631, 548, 5000, 7000, 53, 23, 21, 111, 32400]
 
 FAST_PORTS: List[int] = [
     20, 21, 22, 23, 25, 53, 80, 81, 110, 111, 123, 135, 137, 139, 143, 161, 389,

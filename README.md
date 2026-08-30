@@ -86,6 +86,19 @@ sensible URL to open. Every port also offers "Copy address" and a `nc` probe.
 whether each is loopback-only or reachable from the network; firewall and stealth
 mode state; sharing services; interface details.
 
+## Ports it will not talk to
+
+Some ports treat whatever arrives as payload rather than as a request. A raw print
+port (9100 and friends, plus LPD on 515) hands anything it receives straight to the
+print engine, so a probe comes out as a printed page of protocol text — and because
+the job is never terminated, the queue can jam behind it. Industrial controllers
+(Modbus, S7, DNP3, EtherNet/IP, BACnet) are on the same list in spirit: a scanner
+has no business writing arbitrary bytes at a PLC.
+
+Those ports are still discovered and reported as open. The scanner connects and
+listens, but sends nothing at all, and the port is annotated to say so. Printer web
+interfaces (631/IPP, 80) are ordinary HTTP servers and are probed normally.
+
 ## Honest findings
 
 Findings are split into two classes, because a port number alone proves nothing:

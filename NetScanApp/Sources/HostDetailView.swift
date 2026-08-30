@@ -237,6 +237,12 @@ struct PortRowView: View {
                         .font(.system(size: 10))
                         .foregroundStyle(.tertiary)
                 }
+                ForEach(port.notes ?? [], id: \.self) { note in
+                    Text(note)
+                        .font(.system(size: 10))
+                        .foregroundStyle(.tertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
 
             Spacer(minLength: 4)

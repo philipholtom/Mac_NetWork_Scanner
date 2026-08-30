@@ -20,6 +20,29 @@ HTTP_PORTS = {80, 81, 82, 88, 280, 591, 593, 631, 777, 800, 808, 981, 1010, 2082
 TLS_PORTS = {443, 465, 563, 636, 989, 990, 993, 995, 1443, 2083, 2087, 2096, 3269,
              4443, 5061, 5986, 6443, 8443, 8834, 8883, 9443, 10443, 44443}
 
+# Ports where whatever we send is consumed as payload rather than as a request.
+#
+# Raw print ports (JetDirect 9100+, LPD 515) hand anything they receive straight
+# to the print engine: a probe comes out as a printed page of protocol text, and
+# because the job is never terminated the queue can stay jammed behind it.
+#
+# Industrial controllers are on the list for the same reason in spirit — writing
+# arbitrary bytes at a PLC is not something a scanner should do uninvited.
+#
+# These ports are still reported as open; they are connected to and listened to,
+# but never written to.
+NEVER_WRITE = {
+    35,                                                     # private printer server
+    515,                                                    # LPD
+    9100, 9101, 9102, 9103, 9104, 9105, 9106, 9107,         # raw JetDirect / PDL
+    102,                                                    # Siemens S7
+    502,                                                    # Modbus
+    789,                                                    # Red Lion
+    20000,                                                  # DNP3
+    44818,                                                  # EtherNet/IP
+    47808,                                                  # BACnet
+}
+
 
 @dataclass
 class ServiceFingerprint:
@@ -54,6 +77,10 @@ async def fingerprint_port(
 ) -> ServiceFingerprint:
     """Probe one open TCP port and describe what is listening."""
     fp = ServiceFingerprint(port=port)
+
+    if port in NEVER_WRITE:
+        await _listen_only(ip, port, fp, timeout)
+        return fp
 
     if port in TLS_PORTS:
         await _probe_tls(ip, port, fp, timeout, hostname_hint)
@@ -102,6 +129,33 @@ async def fingerprint_port(
     return fp
 
 
+async def _listen_only(ip: str, port: int, fp: ServiceFingerprint, timeout: float) -> None:
+    """Connect, listen briefly, send nothing at all.
+
+    Used for ports where sending a probe would be acted on as data — a raw print
+    port would print it, and an industrial controller would be handed bytes it
+    never asked for.
+    """
+    try:
+        reader, writer = await asyncio.wait_for(asyncio.open_connection(ip, port), timeout=timeout)
+    except (asyncio.TimeoutError, OSError):
+        fp.notes.append("connection failed during fingerprinting")
+        return
+    try:
+        data = await _read_some(reader, min(timeout, 1.5))
+        if data:
+            fp.banner = _clean(data.decode("utf-8", "replace"))
+            _classify_banner(fp, data)
+        fp.notes.append("listened only — sending anything to this port would be "
+                        "treated as data (a print job or a control command)")
+    finally:
+        try:
+            writer.close()
+            await asyncio.wait_for(writer.wait_closed(), timeout=0.5)
+        except (Exception, asyncio.TimeoutError):  # noqa: BLE001
+            pass
+
+
 async def _passive_banner(ip: str, port: int, fp: ServiceFingerprint, timeout: float) -> None:
     try:
         reader, writer = await asyncio.wait_for(asyncio.open_connection(ip, port), timeout=timeout)
@@ -109,7 +163,7 @@ async def _passive_banner(ip: str, port: int, fp: ServiceFingerprint, timeout: f
         return
     try:
         data = await _read_some(reader, 2.0)
-        if not data:
+        if not data and port not in NEVER_WRITE:
             writer.write(b"\r\n")
             try:
                 await writer.drain()
@@ -244,6 +298,8 @@ _TITLE_RE = re.compile(r"<title[^>]*>(.*?)</title>", re.I | re.S)
 
 async def _probe_http(ip: str, port: int, fp: ServiceFingerprint, timeout: float,
                       use_tls: bool, hostname_hint: Optional[str] = None) -> None:
+    if port in NEVER_WRITE:      # a printer would print the request
+        return
     host_header = hostname_hint or ip
     context = None
     if use_tls:
